@@ -16,12 +16,12 @@ if (!exists("mywd")){
 }
 
 ### load R packages
-packs <- c("tidyverse"
+packs <- c("plyr"
+           ,"tidyverse"
            ,"knitr"
            ,"devtools"
            ,"reshape2"
            ,"readxl"
-           ,"plyr"
            ,"lubridate"
            ,"scales"
            ,"Hmisc"
@@ -176,12 +176,11 @@ bdat <- subset(bdat, !(testcode %in% abcodes))
 # rows per incident:
 table(table(bdat$incidentid))
 
-bdatc <- ddply(bdat
-              ,c("regions", "incidentid", "coldate")
-              ,summarise
-              ,labs_nresults = sum(result %in% c("Negative", "Positive"))
-              ,labs_anypos = ifelse(sum(result %in% "Positive") >= 1, 1, 0)
-              )
+bdatc <- bdat %>%
+  dplyr::group_by(regions, incidentid, coldate) %>%
+  dplyr::summarise(labs_nresults = sum(result %in% c("Negative", "Positive"))
+                  ,labs_anypos = ifelse(sum(result %in% "Positive") >= 1, 1, 0)
+                  )
 bdatc <- subset(bdatc, labs_nresults >= 1)
 
 # unique dates per incident:
@@ -200,6 +199,9 @@ table(ldat$labs_status, useNA='ifany')
 
 # save(ldat, file = paste(mywd, "/../Beyer, Kirsten - WEDSS_Archive/lrein_data/", dat_date, "_phavr_labs.Rdata", sep=""))
 # write.csv(ldat, file = paste(mywd, "/../Beyer, Kirsten - WEDSS_Archive/lrein_data/", dat_date, "_phavr_labs.csv", sep=""))
+
+ldat <- data.frame(ldat)
+bdat <- data.frame(bdat)
 
 rm(list=setdiff(ls(), c(ls_save, "ldat", "bdat")))
 
