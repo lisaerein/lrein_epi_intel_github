@@ -246,7 +246,11 @@ wdat$city[wdat$city %in% c("Milwuakee"
                            , "Milwakee"
                            , "Mlwaukee"
                            , "Milwaukeer"
-                           ,"Milwaikee"
+                           , "Milwaikee"
+                           , "Milwauee"
+                           , "Milwaueke"
+                           , "Milwaauujkeee"
+                           , "Mikwaukee"
                            )] <- "Milwaukee"
 wdat$city[wdat$city %in% c("W Bend", "W. Bend")] <- "West Bend"
 wdat$city[wdat$city %in% c("W Milwaukee", "W. Milwaukee")] <- "West Milwaukee"
@@ -498,6 +502,8 @@ wdat$died01_pop_racethnicity <- (wdat$died01/wdat$pop_racethnicity)*1000
 
 # collapse wdat into a person-level dataset  ----------------------------------
 
+idat <- wdat
+
 ### keep first confirmed incident if any, otherwise first not a case
 
 wdat$rsorder <- 99
@@ -542,7 +548,7 @@ wdat <- data.frame(wdat)
 # save(wdat, file = paste(mywd, "/../Beyer, Kirsten - WEDSS_Archive/lrein_data/", dat_date, "_phavr_linelist.Rdata", sep=""))
 # write.csv(wdat, file = paste(mywd, "/../Beyer, Kirsten - WEDSS_Archive/lrein_data/", dat_date, "_phavr_linelist.csv", sep=""))
 
-rm(list=setdiff(ls(), c(ls_save, "wdat", "lastdate", "lasttime", "alldates")))
+rm(list=setdiff(ls(), c(ls_save, "wdat", "idat", "lastdate", "lasttime", "alldates")))
 
 
 
