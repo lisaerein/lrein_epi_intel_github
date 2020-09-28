@@ -57,6 +57,7 @@ alllab <- data.frame("fname" = allbnames
 
 # grab most recent available date
 if (!exists("dat_date")) dat_date <- max(allbdates)
+if (dat_date > max(allbdates)) dat_date <- max(allbdates)
 dat_date <- as.Date(dat_date)
 
 ### only consider most recent pull
@@ -176,10 +177,14 @@ bdat <- subset(bdat, !(testcode %in% abcodes))
 # rows per incident:
 table(table(bdat$incidentid))
 
+bdat$facilityname <- toupper(bdat$facilityname)
+
 bdatc <- bdat %>%
-  dplyr::group_by(regions, incidentid, coldate) %>%
+  dplyr::group_by(regions, jurisdiction, incidentid, coldate) %>%
   dplyr::summarise(labs_nresults = sum(result %in% c("Negative", "Positive"))
                   ,labs_anypos = ifelse(sum(result %in% "Positive") >= 1, 1, 0)
+                  ,nfacs = sum(!is.na(unique(facilityname)), na.rm=T)
+                  ,facility = paste(unique(facilityname[!is.na(facilityname)]), collapse = "; ")
                   )
 bdatc <- subset(bdatc, labs_nresults >= 1)
 

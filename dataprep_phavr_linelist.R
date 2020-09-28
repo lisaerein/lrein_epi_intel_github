@@ -62,6 +62,10 @@ allphavr <- data.frame("fname" = allfnames
 
 # grab most recent available date
 if (!exists("dat_date")) dat_date <- max(allfdates)
+if (dat_date > max(allfdates)) {
+  dat_date <- max(allfdates)
+  if (lastdate > max(allfdates)) lastdate <- max(allfdates)
+}
 dat_date <- as.Date(dat_date)
 
 ### only consider most recent pull
@@ -188,7 +192,8 @@ wdat$county_fips <- wdat$countyfips
 wdat$census_tract <- wdat$censustract
 wdat$census_block <- wdat$censusblock
 
-wdat$county_fips[wdat$county_fips %in% "N/A"] <- NA
+wdat$county_fips[wdat$county_fips %in% c("TRACT N/A", "WI")] <- NA
+wdat$county_fips[is.na(as.numeric(wdat$county_fips))] <- NA
 
 ## imputation by countyofresidence
 wdat$county_fips[is.na(wdat$county_fips) & (wdat$countyofresidence %in% "Milwaukee" )] <- 55079
@@ -231,10 +236,21 @@ capstr <- function(y) {
 wdat$city <- unlist(lapply(wdat$city, function(x) capstr(tolower(x))))
 table(wdat$city)
 wdat$city[wdat$city %in% c("Milwuakee"
+                           , "Milwauikee"
+                           , "Millwalkiee"
+                           , "Milwaukeee"
+                           , "Milwaukwee"
+                           , "Milwukee"
+                           , "Millwalkiee"
                            , "Milwaukeewi"
                            , "Milwaukke  Wi"
                            , "Milwa"
                            , "Mil"
+                           , "Miluakee"
+                           , "Milwalkiee"
+                           , "Milwaukee9"
+                           , "Milwaukkee"
+                           , "Milwaykee"
                            , "Milw."
                            , "Milw"
                            , "Miilwaukee"
@@ -339,10 +355,10 @@ table(wdat$agecat2 <- cut(wdat$age
 table(wdat$age, wdat$agecat2, useNA='ifany')
 
 table(wdat$agecat6 <- cut(wdat$age
-                          , breaks = c(0, 18, 30, 40, 60, 80, Inf)
+                          , breaks = c(0, 18, 25, 40, 60, 80, Inf)
                           , labels = c("< 18"
-                                       , "18-29"
-                                       , "30-39"
+                                       , "18-24"
+                                       , "25-39"
                                        , "40-59"
                                        , "60-79"
                                        , "80+"
@@ -424,6 +440,16 @@ pop <- data.frame(read_csv(paste(mywd, "/Data Sources/census/ACS5y_county_wi_pop
 
 popmke <- subset(pop, Countyfips %in% 55079)
 
+pop_agerace <- data.frame(read_csv(paste(mywd, "/Data Sources/census/ACS5y_county_wi_age_race_ethnicity2018.csv", sep="")))
+popmke_agerace <- subset(pop_agerace, Countyfips %in% 55079)
+
+popmke$Tot18_19 <- sum(popmke_agerace[,names(popmke_agerace)[grepl("_18to19", names(popmke_agerace))]])
+popmke$Tot18_24 <- sum(popmke_agerace[,names(popmke_agerace)[grepl("_18to19|_20to24", names(popmke_agerace))]])
+
+popmke$Tot18_39 <- popmke$Tot19_39 
+
+popmke$Tot25_39 <- popmke$Tot18_39 - popmke$Tot18_24
+
 # gender
 popmke_gender <- data.frame("gender" = c("Male"
                                          , "Female"
@@ -453,6 +479,24 @@ popmke_agecat2 <- data.frame("agecat2" = c("< 18"
                              ,"county_fips" = 55079
                              )
 sum(popmke_agecat2[,2], na.rm=T)
+
+popmke_agecat6 <- data.frame("agecat6" = c("< 18"
+                                           , "18-24"
+                                           , "25-39"
+                                           , "40-59"
+                                           , "60-79"
+                                           , "80+"
+                            )
+                            ,"pop_agecat6" = c(popmke$Tot18under
+                                               , popmke$Tot18_24
+                                               , popmke$Tot25_39
+                                               , popmke$Tot40_59
+                                               , popmke$Tot60_79
+                                               , popmke$Tot80over
+                            )
+                            ,"county_fips" = 55079
+                            )
+sum(popmke_agecat6[,2], na.rm=T)
 
 # race/eth
 popmke_racethnicity <- data.frame("racethnicity" = c("Black or AA"
@@ -485,19 +529,23 @@ sum(popmke[,incs], na.rm=T)
 
 wdat <- merge(wdat, popmke_gender      , by = c("county_fips", "gender"      ), all.x = TRUE, all.y = FALSE)
 wdat <- merge(wdat, popmke_agecat2     , by = c("county_fips", "agecat2"     ), all.x = TRUE, all.y = FALSE)
+wdat <- merge(wdat, popmke_agecat6     , by = c("county_fips", "agecat6"     ), all.x = TRUE, all.y = FALSE)
 wdat <- merge(wdat, popmke_racethnicity, by = c("county_fips", "racethnicity"), all.x = TRUE, all.y = FALSE)
 
 # create variables to calculate rates per 1000 MKE Co. residents...
 wdat$case01_pop_gender <- (wdat$case01/wdat$pop_gender)*1000
 wdat$case01_pop_agecat2 <- (wdat$case01/wdat$pop_agecat2)*1000
+wdat$case01_pop_agecat6 <- (wdat$case01/wdat$pop_agecat6)*1000
 wdat$case01_pop_racethnicity <- (wdat$case01/wdat$pop_racethnicity)*1000
 
 wdat$hosp01_pop_gender <- (wdat$hosp01/wdat$pop_gender)*1000
 wdat$hosp01_pop_agecat2 <- (wdat$hosp01/wdat$pop_agecat2)*1000
+wdat$hosp01_pop_agecat6 <- (wdat$hosp01/wdat$pop_agecat6)*1000
 wdat$hosp01_pop_racethnicity <- (wdat$hosp01/wdat$pop_racethnicity)*1000
 
 wdat$died01_pop_gender <- (wdat$died01/wdat$pop_gender)*1000
 wdat$died01_pop_agecat2 <- (wdat$died01/wdat$pop_agecat2)*1000
+wdat$died01_pop_agecat6 <- (wdat$died01/wdat$pop_agecat6)*1000
 wdat$died01_pop_racethnicity <- (wdat$died01/wdat$pop_racethnicity)*1000
 
 # collapse wdat into a person-level dataset  ----------------------------------
@@ -522,9 +570,13 @@ wdat2 <- wdat %>%
   dplyr::group_by(clientid) %>%
   dplyr::mutate(nincidentids = length(unique(incidentid))) %>%
   dplyr::mutate(nincidentids_pos = sum(case01)) %>%
+  dplyr::mutate(multi_incidentids = paste(incidentid, collapse = "; ")) %>% ## if there are multiple inc per person, record all
+  dplyr::mutate(multi_jurisdictions = paste(jurisdiction, collapse = "; ")) %>% ## if there are multiple jurs per person, record all
   dplyr::mutate(died01_ever = max(died01)) %>%
   dplyr::mutate(hosp01_ever = max(hosp01)) %>%
-  dplyr::mutate(deathdate_ever = min(deathdate))
+  dplyr::mutate(deathdate_ever = suppressWarnings(min(deathdate[!is.na(deathdate)]))) # keep first non-missing deathdate if there are multiple incidents
+
+wdat2$deathdate_ever[!is.finite(wdat2$deathdate_ever)] <- NA
 
 wdat <- wdat2
 
@@ -533,13 +585,39 @@ wdat <- wdat[!duplicated(wdat$clientid),]
 
 table(wdat$resolution_status)
 
-table("First" = wdat$hosp01, "Ever" = wdat$hosp01_ever, wdat$resolution_status %in% "Confirmed")
-table("First" = wdat$died01, "Ever" = wdat$died01_ever, wdat$resolution_status %in% "Confirmed")
+table("First" = wdat$hosp01, "Ever" = wdat$hosp01_ever, wdat$resolution_status %in% "Confirmed", useNA='ifany')
+table("First" = wdat$died01, "Ever" = wdat$died01_ever, wdat$resolution_status %in% "Confirmed", useNA='ifany')
+
+table(wdat$died01_ever, wdat$deathdate, wdat$county_fips %in% 55079, useNA='ifany')
 
 # if someone had multiple positive incidents, make sure we capture whether that person was ever hospitalized or died after 1st dx
 wdat$hosp01 <- wdat$hosp01_ever
 wdat$died01 <- wdat$died01_ever
 wdat$deathdate <- wdat$deathdate_ever
+
+# deathdate checking and imputation WEDSS and ME data ---------------------
+
+deaths_xwalk <- data.frame(read_csv(paste(mywd, "/MCOEM/lrein/deathdates_checking/deaths_wedss_me_xwalk.csv", sep="")))
+
+deaths_xwalk$clientid <- deaths_xwalk$wedss_clientid
+
+wdat <- merge(wdat
+              , deaths_xwalk[,c("wedss_clientid", "me_caseno", "me_deathdate")]
+              , by.x = "clientid"
+              , by.y = "wedss_clientid"
+              , all.x = T
+              , all.y = F
+              )
+
+table(!is.na(wdat$deathdate), !is.na(wdat$me_deathdate), wdat$died01 == 1)
+ 
+# # Update WEDSS death status if death is found in ME data (for cases only):
+wdat$died01[wdat$case01 == 1 & wdat$died01 == 0 & !is.na(wdat$me_deathdate)] <- 1
+
+# if WEDSS deathdate is missing, replace with date from ME data:
+wdat$deathdate[wdat$died01 == 1 & is.na(wdat$deathdate)] <- wdat$me_deathdate[wdat$died01 == 1 & is.na(wdat$deathdate)]
+
+table(wdat$died01_ever, wdat$deathdate, wdat$county_fips %in% 55079, useNA='ifany')
 
 # remove unnecessary objects from workspace -------------------------------
 
@@ -548,7 +626,7 @@ wdat <- data.frame(wdat)
 # save(wdat, file = paste(mywd, "/../Beyer, Kirsten - WEDSS_Archive/lrein_data/", dat_date, "_phavr_linelist.Rdata", sep=""))
 # write.csv(wdat, file = paste(mywd, "/../Beyer, Kirsten - WEDSS_Archive/lrein_data/", dat_date, "_phavr_linelist.csv", sep=""))
 
-rm(list=setdiff(ls(), c(ls_save, "wdat", "idat", "lastdate", "lasttime", "alldates")))
+rm(list=setdiff(ls(), c(ls_save, "wdat", "idat", "lastdate", "lasttime", "alldates","popmke")))
 
 
 
